@@ -27,10 +27,10 @@ rm "$FONT_DIR/fonts.zip"
 
 # 3. Professional Sprites
 echo "Downloading professional sprites (icons)..."
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.json -o "$SPRITE_DIR/sprite.json"
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.png -o "$SPRITE_DIR/sprite.png"
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.json -o "$SPRITE_DIR/sprite@2x.json"
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.png -o "$SPRITE_DIR/sprite@2x.png"
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite.json -o "$SPRITE_DIR/sprite.json"
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite.png -o "$SPRITE_DIR/sprite.png"
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite@2x.json -o "$SPRITE_DIR/sprite@2x.json"
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite@2x.png -o "$SPRITE_DIR/sprite@2x.png"
 
 # 4. Global Planet Data
 echo -e "\e[33mCRITICAL: Starting Entire Earth Download (~110GB).\e[0m"

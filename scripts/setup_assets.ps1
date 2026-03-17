@@ -10,11 +10,13 @@ Remove-Item $fontsZip
 
 # 2. Setup Sprites (Icons)
 Write-Host "Setting up sprites..." -ForegroundColor Cyan
-# Downloading pre-compiled OSM Bright sprites
-$spritesUrl = "https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.zip"
-$spritesZip = "tileserver/sprites/sprites.zip"
-Invoke-WebRequest -Uri $spritesUrl -OutFile $spritesZip
-Expand-Archive -Path $spritesZip -DestinationPath "tileserver/sprites" -Force
-Remove-Item $spritesZip
+if (!(Test-Path "tileserver/sprites")) { New-Item -ItemType Directory -Path "tileserver/sprites" }
+
+$baseUrl = "https://openmaptiles.github.io/osm-bright-gl-style"
+$files = "sprite.json", "sprite.png", "sprite@2x.json", "sprite@2x.png"
+
+foreach ($file in $files) {
+    Invoke-WebRequest -Uri "$baseUrl/$file" -OutFile "tileserver/sprites/$file"
+}
 
 Write-Host "Assets correctly populated in tileserver/fonts and tileserver/sprites" -ForegroundColor Green

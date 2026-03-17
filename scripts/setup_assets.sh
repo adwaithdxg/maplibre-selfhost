@@ -10,9 +10,9 @@ rm tileserver/fonts/fonts.zip
 # 2. Setup Sprites (Icons)
 echo "Setting up sprites..."
 mkdir -p tileserver/sprites
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.json -o tileserver/sprites/sprite.json
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.png -o tileserver/sprites/sprite.png
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.json -o tileserver/sprites/sprite@2x.json
-curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.png -o tileserver/sprites/sprite@2x.png
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite.json -o tileserver/sprites/sprite.json
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite.png -o tileserver/sprites/sprite.png
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite@2x.json -o tileserver/sprites/sprite@2x.json
+curl -L --fail --show-error --http1.1 https://openmaptiles.github.io/osm-bright-gl-style/sprite@2x.png -o tileserver/sprites/sprite@2x.png
 
 echo "Assets correctly populated in tileserver/fonts and tileserver/sprites"
