@@ -1,7 +1,13 @@
-#!/bin/bash
-# Master Deployment Script for MapLibre Self-Hosted Stack on Ubuntu
+set -euo pipefail
 
-set -e
+# Check for Docker permissions
+if ! groups $USER | grep &>/dev/null "\bdocker\b"; then
+    echo -e "\e[33mWARNING: You are not in the 'docker' group.\e[0m"
+    echo "Please run: sudo usermod -aG docker \$USER"
+    echo "Then LOG OUT and LOG BACK IN for changes to take effect."
+    read -p "Continue anyway? (y/n): " auth_confirm
+    if [[ $auth_confirm != "y" ]]; then exit 1; fi
+fi
 
 echo -e "\e[36mInitializing MapLibre Stack Deployment on Ubuntu...\e[0m"
 

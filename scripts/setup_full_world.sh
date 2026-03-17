@@ -3,6 +3,7 @@
 # This script configures everything required for a "proper" self-hosted MapLibre server.
 
 set -e
+set -uo pipefail
 
 # Configuration
 DATA_DIR="tileserver/data"
@@ -20,16 +21,16 @@ mkdir -p "$DATA_DIR" "$FONT_DIR" "$SPRITE_DIR" "tileserver/styles"
 
 # 2. Professional Fonts
 echo "Downloading professional fonts..."
-curl -L "$FONTS_URL" -o "$FONT_DIR/fonts.zip"
+curl -L --fail --show-error --http1.1 "$FONTS_URL" -o "$FONT_DIR/fonts.zip"
 unzip -o "$FONT_DIR/fonts.zip" -d "$FONT_DIR/"
 rm "$FONT_DIR/fonts.zip"
 
 # 3. Professional Sprites
 echo "Downloading professional sprites (icons)..."
-curl -L https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.json -o "$SPRITE_DIR/sprite.json"
-curl -L https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.png -o "$SPRITE_DIR/sprite.png"
-curl -L https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.json -o "$SPRITE_DIR/sprite@2x.json"
-curl -L https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.png -o "$SPRITE_DIR/sprite@2x.png"
+curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.json -o "$SPRITE_DIR/sprite.json"
+curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright.png -o "$SPRITE_DIR/sprite.png"
+curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.json -o "$SPRITE_DIR/sprite@2x.json"
+curl -L --fail --show-error --http1.1 https://github.com/maptiler/tileserver-gl/raw/master/test/sprites/osm-bright@2x.png -o "$SPRITE_DIR/sprite@2x.png"
 
 # 4. Global Planet Data
 echo -e "\e[33mCRITICAL: Starting Entire Earth Download (~110GB).\e[0m"
@@ -37,8 +38,8 @@ echo -e "\e[33mEnsure you have sufficient disk space.\e[0m"
 read -p "Proceed with final download? (y/n): " confirm
 
 if [[ $confirm == "y" ]]; then
-    echo "Downloading Global MBTiles (Resumable)... this will take time."
-    curl -L --http1.1 "$PLANET_URL" -o "$PLANET_FILE"
+    echo "Downloading Global MBTiles... this will take time."
+    curl -L --fail --show-error --http1.1 "$PLANET_URL" -o "$PLANET_FILE"
     
     echo -e "\e[32mDownload Complete. Restarting Services...\e[0m"
     docker compose restart tileserver || echo "Note: docker-compose not running, ignoring restart."

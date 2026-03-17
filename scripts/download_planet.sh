@@ -1,5 +1,4 @@
-#!/bin/bash
-# Professional MapLibre Global Planet Download Script (Linux/Ubuntu)
+set -euo pipefail
 
 DATA_DIR="tileserver/data"
 PLANET_FILE="$DATA_DIR/planet.mbtiles"
@@ -19,8 +18,8 @@ fi
 echo -e "\e[36mDownloading Planet Earth MBTiles... This will take a long time.\e[0m"
 mkdir -p "$DATA_DIR"
 
-# Using curl with resume support
-curl -L --http1.1 "$REAL_PLANET_URL" -o "$PLANET_FILE"
+# Using curl with stability flags
+curl -L --fail --show-error --http1.1 "$REAL_PLANET_URL" -o "$PLANET_FILE"
 
 # 3. Finalize Configuration
 echo -e "\e[32mDownload Complete. Finalizing TileServer configuration...\e[0m"
