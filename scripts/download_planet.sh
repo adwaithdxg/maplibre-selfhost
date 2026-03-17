@@ -26,7 +26,7 @@ curl -L -C - "$REAL_PLANET_URL" -o "$PLANET_FILE"
 echo -e "\e[32mDownload Complete. Finalizing TileServer configuration...\e[0m"
 
 # Restart to pick up the new 110GB file
-docker-compose restart tileserver
+docker compose restart tileserver
 
 echo -e "\e[32mSuccess! The entire earth is now hosted locally on port 8082.\e[0m"
 echo -e "\e[36mFrontend is available at http://localhost:8083\e[0m"

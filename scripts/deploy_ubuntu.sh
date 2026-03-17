@@ -8,7 +8,7 @@ echo -e "\e[36mInitializing MapLibre Stack Deployment on Ubuntu...\e[0m"
 # 1. Update and Install Dependencies
 echo "Installing base dependencies (curl, unzip, docker)..."
 sudo apt-get update
-sudo apt-get install -y curl unzip docker.io docker-compose
+sudo apt-get install -y curl unzip docker.io docker-compose-v2
 
 # 2. Ensure Directory Structure
 echo "Setting up directory structure..."
@@ -26,7 +26,7 @@ echo "To download the full 110GB Planet, run: bash scripts/download_planet.sh"
 
 # 5. Build and Start Docker Stack
 echo "Starting the Docker containers..."
-sudo docker-compose up -d --build
+sudo docker compose up -d --build
 
 echo -e "\e[32mDeployment Complete!\e[0m"
 echo -e "\e[34m- Map Interface: http://localhost:8083\e[0m"

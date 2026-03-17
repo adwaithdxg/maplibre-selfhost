@@ -41,7 +41,7 @@ if [[ $confirm == "y" ]]; then
     curl -L -C - "$PLANET_URL" -o "$PLANET_FILE"
     
     echo -e "\e[32mDownload Complete. Restarting Services...\e[0m"
-    docker-compose restart tileserver || echo "Note: docker-compose not running, ignoring restart."
+    docker compose restart tileserver || echo "Note: docker-compose not running, ignoring restart."
 else
     echo "Skipping Planet download. Please run this script again later to complete the data."
 fi
