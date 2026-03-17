@@ -38,7 +38,7 @@ read -p "Proceed with final download? (y/n): " confirm
 
 if [[ $confirm == "y" ]]; then
     echo "Downloading Global MBTiles (Resumable)... this will take time."
-    curl -L -C - "$PLANET_URL" -o "$PLANET_FILE"
+    curl -L "$PLANET_URL" -o "$PLANET_FILE"
     
     echo -e "\e[32mDownload Complete. Restarting Services...\e[0m"
     docker compose restart tileserver || echo "Note: docker-compose not running, ignoring restart."

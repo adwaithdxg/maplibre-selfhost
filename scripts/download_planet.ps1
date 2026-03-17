@@ -14,7 +14,7 @@ Write-Host "Downloading Planet Earth MBTiles... This will take a long time." -Fo
 if (!(Test-Path $DATA_DIR)) { New-Item -ItemType Directory -Path $DATA_DIR }
 
 # Use BITS for background/resumable download if possible, or standard WebRequest
-Invoke-WebRequest -Uri $REAL_PLANET_URL -OutFile $PLANET_FILE -Resume
+Invoke-WebRequest -Uri $REAL_PLANET_URL -OutFile $PLANET_FILE
 
 # 3. Finalize Configuration
 Write-Host "Download Complete. Finalizing TileServer configuration..." -ForegroundColor Green
