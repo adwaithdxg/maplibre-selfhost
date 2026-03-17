@@ -1,0 +1,9 @@
+services:
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: maplibre-tileserver
+    restart: always
+    ports:
+      - "8082:8080"
+    volumes:
+      - ./tileserver:/data

@@ -1,0 +1,40 @@
+{
+  "options": {
+    "paths": {
+      "root": "/data",
+      "fonts": "fonts",
+      "sprites": "sprites",
+      "styles": "styles",
+      "mbtiles": "data"
+    }
+  },
+  "styles": {
+    "osm-bright": {
+      "style": "osm-bright/style.json",
+      "tilejson": {
+        "type": "vector"
+      }
+    },
+    "positron": {
+      "style": "positron/style.json"
+    },
+    "dark-matter": {
+      "style": "dark-matter/style.json"
+    },
+    "klokantech-basic": {
+      "style": "klokantech-basic/style.json"
+    }
+  },
+  "data": {
+    "v3": {
+      "mbtiles": "planet.mbtiles"
+    },
+    "v3-india": {
+      "mbtiles": "planet.mbtiles"
+    },
+    "v3-kuwait": {
+      "mbtiles": "planet.mbtiles"
+    }
+  }
+
+}
