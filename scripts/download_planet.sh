@@ -20,7 +20,7 @@ echo -e "\e[36mDownloading Planet Earth MBTiles... This will take a long time.\e
 mkdir -p "$DATA_DIR"
 
 # Using curl with resume support
-curl -L "$REAL_PLANET_URL" -o "$PLANET_FILE"
+curl -L --http1.1 "$REAL_PLANET_URL" -o "$PLANET_FILE"
 
 # 3. Finalize Configuration
 echo -e "\e[32mDownload Complete. Finalizing TileServer configuration...\e[0m"
