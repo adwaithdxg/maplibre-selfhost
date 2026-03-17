@@ -4,7 +4,7 @@
 DATA_DIR="tileserver/data"
 PLANET_FILE="$DATA_DIR/planet.mbtiles"
 # Using OpenFreeMap verified OpenMapTiles v3.15 schema planet build
-REAL_PLANET_URL="https://btrfs.openfreemap.com/areas/planet/20241021_043810/tiles.mbtiles"
+REAL_PLANET_URL="https://btrfs.openfreemap.com/areas/planet/20260311_001001_pt/tiles.mbtiles"
 
 echo -e "\e[33mWarning: You are about to download the Entire Earth Map (~110GB).\e[0m"
 echo -e "\e[33mEnsure you have enough disk space in $DATA_DIR\e[0m"

@@ -9,7 +9,7 @@ DATA_DIR="tileserver/data"
 FONT_DIR="tileserver/fonts"
 SPRITE_DIR="tileserver/sprites"
 PLANET_FILE="$DATA_DIR/planet.mbtiles"
-PLANET_URL="https://btrfs.openfreemap.com/areas/planet/20241021_043810/tiles.mbtiles"
+PLANET_URL="https://btrfs.openfreemap.com/areas/planet/20260311_001001_pt/tiles.mbtiles"
 FONTS_URL="https://github.com/openmaptiles/fonts/releases/download/v2.0/v2.0.zip"
 
 echo -e "\e[36m--- MapLibre Full World Setup --- \e[0m"
