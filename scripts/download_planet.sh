@@ -18,8 +18,9 @@ fi
 echo -e "\e[36mDownloading Planet Earth MBTiles... This will take a long time.\e[0m"
 mkdir -p "$DATA_DIR"
 
-# Using curl with stability flags
-curl -L --fail --show-error --http1.1 "$REAL_PLANET_URL" -o "$PLANET_FILE"
+# Using aria2c for stability on massive 110GB transfer
+echo -e "\e[36mStarting robust download with aria2c...\e[0m"
+aria2c -c -x 16 -s 16 --retry-wait 5 --max-file-not-found=0 --check-certificate=false -d "$DATA_DIR" -o "planet.mbtiles" "$REAL_PLANET_URL"
 
 # 3. Finalize Configuration
 echo -e "\e[32mDownload Complete. Finalizing TileServer configuration...\e[0m"

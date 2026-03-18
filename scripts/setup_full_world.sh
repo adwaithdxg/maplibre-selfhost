@@ -38,8 +38,8 @@ echo -e "\e[33mEnsure you have sufficient disk space.\e[0m"
 read -p "Proceed with final download? (y/n): " confirm
 
 if [[ $confirm == "y" ]]; then
-    echo "Downloading Global MBTiles... this will take time."
-    curl -L --fail --show-error --http1.1 "$PLANET_URL" -o "$PLANET_FILE"
+    echo "Downloading Global MBTiles (Robustly with aria2c)... this will take time."
+    aria2c -c -x 16 -s 16 --retry-wait 5 --max-file-not-found=0 --check-certificate=false -d "$DATA_DIR" -o "planet.mbtiles" "$PLANET_URL"
     
     echo -e "\e[32mDownload Complete. Restarting Services...\e[0m"
     docker compose restart tileserver || echo "Note: docker-compose not running, ignoring restart."

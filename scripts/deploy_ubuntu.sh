@@ -12,9 +12,9 @@ fi
 echo -e "\e[36mInitializing MapLibre Stack Deployment on Ubuntu...\e[0m"
 
 # 1. Update and Install Dependencies
-echo "Installing base dependencies (curl, unzip, docker)..."
+echo "Installing base dependencies (curl, unzip, docker, aria2)..."
 sudo apt-get update
-sudo apt-get install -y curl unzip docker.io docker-compose-v2
+sudo apt-get install -y curl unzip docker.io docker-compose-v2 aria2
 
 # 2. Ensure Directory Structure
 echo "Setting up directory structure..."
