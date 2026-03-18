@@ -18,7 +18,23 @@ fi
 echo -e "\e[36mDownloading Planet Earth MBTiles... This will take a long time.\e[0m"
 mkdir -p "$DATA_DIR"
 
-# Using aria2c for stability on massive 110GB transfer
+# Dependency Check: aria2c (Required for stability on 110GB transfer)
+if ! command -v aria2c &> /dev/null; then
+    echo -e "\e[33mWarning: 'aria2c' is not installed.\e[0m"
+    if command -v apt-get &> /dev/null; then
+        read -p "Would you like to install it now? (sudo apt-get install aria2) (y/n): " install_confirm
+        if [[ $install_confirm == "y" ]]; then
+            sudo apt-get update && sudo apt-get install -y aria2
+        else
+            echo "Error: aria2c is required for this large download. Please install it manually."
+            exit 1
+        fi
+    else
+        echo "Error: 'aria2c' is missing. Please install 'aria2' manually for your system."
+        exit 1
+    fi
+fi
+
 echo -e "\e[36mStarting robust download with aria2c...\e[0m"
 aria2c -c -x 16 -s 16 --retry-wait 5 --max-file-not-found=0 --check-certificate=false -d "$DATA_DIR" -o "planet.mbtiles" "$REAL_PLANET_URL"
 

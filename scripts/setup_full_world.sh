@@ -38,8 +38,31 @@ echo -e "\e[33mEnsure you have sufficient disk space.\e[0m"
 read -p "Proceed with final download? (y/n): " confirm
 
 if [[ $confirm == "y" ]]; then
-    echo "Downloading Global MBTiles (Robustly with aria2c)... this will take time."
-    aria2c -c -x 16 -s 16 --retry-wait 5 --max-file-not-found=0 --check-certificate=false -d "$DATA_DIR" -o "planet.mbtiles" "$PLANET_URL"
+    # Dependency Check: aria2c
+    if ! command -v aria2c &> /dev/null; then
+        echo -e "\e[33mWarning: 'aria2c' is not installed. It is highly recommended for the 110GB download.\e[0m"
+        if command -v apt-get &> /dev/null; then
+            read -p "Would you like to install it now? (sudo apt-get install aria2) (y/n): " install_confirm
+            if [[ $install_confirm == "y" ]]; then
+                sudo apt-get update && sudo apt-get install -y aria2
+            else
+                echo "Proceeding without aria2c... this might be slower or less reliable."
+            fi
+        else
+            echo "Please install 'aria2' manually for your system."
+            echo "Example: 'sudo apt install aria2' (Ubuntu/Debian) or 'brew install aria2' (macOS)"
+            read -p "Proceed anyway with standard curl? (y/n): " curl_confirm
+            if [[ $curl_confirm != "y" ]]; then exit 1; fi
+        fi
+    fi
+
+    echo "Downloading Global MBTiles... this will take time."
+    if command -v aria2c &> /dev/null; then
+        aria2c -c -x 16 -s 16 --retry-wait 5 --max-file-not-found=0 --check-certificate=false -d "$DATA_DIR" -o "planet.mbtiles" "$PLANET_URL"
+    else
+        echo "Using curl fallback (Note: slower and no auto-resume support)..."
+        curl -L --fail --show-error --http1.1 "$PLANET_URL" -o "$PLANET_FILE"
+    fi
     
     echo -e "\e[32mDownload Complete. Restarting Services...\e[0m"
     docker compose restart tileserver || echo "Note: docker-compose not running, ignoring restart."
