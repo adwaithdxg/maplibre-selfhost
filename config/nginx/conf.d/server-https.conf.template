@@ -1,0 +1,27 @@
+# =============================================================================
+#  Port 443 server — TLS, HTTP/2 (+ optional HTTP/3), reverse proxy + cache
+# -----------------------------------------------------------------------------
+#  Lines tagged "#__HTTP3__" are activated by the entrypoint only when the
+#  nginx build supports QUIC and ENABLE_HTTP3=true.
+# =============================================================================
+server {
+    listen      443 ssl;
+    listen      [::]:443 ssl;
+    http2       on;
+#__HTTP3__    listen 443 quic reuseport;
+#__HTTP3__    listen [::]:443 quic reuseport;
+    server_name ${SERVER_NAME};
+
+    # --- TLS ---
+    ssl_certificate     ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
+    include /etc/nginx/snippets/ssl-params.conf;
+
+    # --- Security (HTTPS-only HSTS + baseline headers) ---
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+#__HTTP3__    add_header Alt-Svc 'h3=":443"; ma=86400' always;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    # --- Routes (tiles, fonts, style, viewer) ---
+    include /etc/nginx/snippets/locations.conf;
+}

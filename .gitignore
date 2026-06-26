@@ -1,0 +1,32 @@
+# Local environment / secrets
+.env
+*.local
+
+# Runtime data (all of this is regenerated automatically by the pipeline)
+data/
+*.osm.pbf
+*.mbtiles
+*.pmtiles
+
+# Downloaded / generated assets (fonts, sprites, rewritten style)
+assets/fonts/
+assets/sprites/
+assets/style/
+assets/web/config.js
+
+# TLS material
+*.pem
+*.key
+*.crt
+letsencrypt/
+
+# Logs
+logs/
+*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

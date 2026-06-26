@@ -1,0 +1,27 @@
+# =============================================================================
+#  Port 80 server — ACME challenge + redirect to HTTPS  (used when ENABLE_SSL=true)
+# =============================================================================
+server {
+    listen      80 default_server;
+    listen      [::]:80 default_server;
+    server_name ${SERVER_NAME};
+
+    # Let's Encrypt http-01 challenge — must stay on plain HTTP.
+    location ^~ /.well-known/acme-challenge/ {
+        root        /var/www/certbot;
+        default_type "text/plain";
+        allow       all;
+    }
+
+    # Container liveness probe (healthcheck hits port 80 even in TLS mode).
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Everything else -> HTTPS.
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}

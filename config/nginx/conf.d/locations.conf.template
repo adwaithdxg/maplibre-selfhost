@@ -1,0 +1,85 @@
+# =============================================================================
+#  locations.conf — shared location blocks (rendered to snippets/locations.conf)
+# -----------------------------------------------------------------------------
+#  Included by BOTH the HTTP and HTTPS server blocks so routing stays DRY.
+#  ${NGINX_TILE_CACHE_TTL} and ${NGINX_RATE_BURST} are env-substituted; native
+#  Nginx $variables are preserved.
+# =============================================================================
+
+# ---- Liveness probe (used by the container healthcheck) ---------------------
+location = /healthz {
+    access_log off;
+    add_header Content-Type text/plain;
+    return 200 "ok\n";
+}
+
+# ---- Upstream (Martin) health passthrough -----------------------------------
+location = /health/upstream {
+    access_log off;
+    proxy_pass http://martin_backend/health;
+}
+
+# ---- Vector tiles -----------------------------------------------------------
+# Public:  /tiles/<tileset>/{z}/{x}/{y}      ->  Martin /<tileset>/{z}/{x}/{y}
+# TileJSON:/tiles/<tileset>                  ->  Martin /<tileset>
+location /tiles/ {
+    # Rate limit + cap concurrent connections per client.
+    limit_req  zone=tile_limit burst=${NGINX_RATE_BURST} nodelay;
+    limit_conn conn_limit 64;
+
+    proxy_pass http://martin_backend/;
+    include    /etc/nginx/snippets/proxy-common.conf;
+
+    # Edge cache (tiles are immutable per build).
+    proxy_cache            tile_cache;
+    proxy_cache_valid      200 206 ${NGINX_TILE_CACHE_TTL};
+    proxy_cache_valid      404 1m;
+    proxy_cache_use_stale  error timeout updating http_500 http_502 http_503 http_504;
+    proxy_cache_background_update on;
+    proxy_cache_lock       on;
+    proxy_cache_revalidate on;
+
+    add_header X-Cache-Status $upstream_cache_status always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Cache-Control "public, max-age=86400" always;
+}
+
+# ---- Font glyphs (SDF) ------------------------------------------------------
+# /font/{fontstack}/{start}-{end}  ->  Martin (same path)
+location /font/ {
+    limit_req zone=tile_limit burst=${NGINX_RATE_BURST} nodelay;
+
+    proxy_pass http://martin_backend;
+    include    /etc/nginx/snippets/proxy-common.conf;
+
+    proxy_cache            tile_cache;
+    proxy_cache_valid      200 ${NGINX_TILE_CACHE_TTL};
+    proxy_cache_valid      404 1m;
+    proxy_cache_use_stale  error timeout updating;
+    proxy_cache_lock       on;
+
+    add_header X-Cache-Status $upstream_cache_status always;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Cache-Control "public, max-age=604800" always;
+}
+
+# ---- Style JSON (static, templated at generation time) ----------------------
+location = /style.json {
+    root /srv/assets/style;
+    try_files /style.json =404;
+    types { } default_type application/json;
+    add_header Access-Control-Allow-Origin "*" always;
+    add_header Cache-Control "public, max-age=3600" always;
+}
+
+# ---- Demo / self-test viewer ------------------------------------------------
+# No per-location add_header here, so the server-level security headers (and
+# HSTS on HTTPS) are inherited by the HTML page. (Nginx does not merge
+# add_header across contexts — a location with its own add_header drops the
+# inherited ones, so the API locations above carry their headers explicitly.)
+location / {
+    root  /srv/assets/web;
+    index index.html;
+    try_files $uri $uri/ /index.html;
+    expires 5m;
+}

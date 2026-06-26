@@ -1,0 +1,18 @@
+# =============================================================================
+#  Port 80 server — serve app directly over HTTP  (used when ENABLE_SSL=false)
+#  Use only behind an external TLS terminator / private network.
+# =============================================================================
+server {
+    listen      80 default_server;
+    listen      [::]:80 default_server;
+    server_name ${SERVER_NAME};
+
+    # Keep ACME reachable so TLS can be enabled later with no surprises.
+    location ^~ /.well-known/acme-challenge/ {
+        root        /var/www/certbot;
+        default_type "text/plain";
+    }
+
+    include /etc/nginx/snippets/security-headers.conf;
+    include /etc/nginx/snippets/locations.conf;
+}

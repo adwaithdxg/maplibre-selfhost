@@ -1,0 +1,49 @@
+# =============================================================================
+#  Martin configuration — vector tile + font glyph server (internal only)
+# -----------------------------------------------------------------------------
+#  Docs: https://maplibre.org/martin/config-file/
+#  Martin is never exposed publicly; Nginx proxies + caches in front of it.
+# =============================================================================
+
+# Bind on all interfaces inside the container network; Nginx reaches it as
+# http://martin:3000 over the private compose network.
+listen_addresses: "0.0.0.0:3000"
+
+# Keep upstream (Nginx<->Martin) connections warm.
+keep_alive: 75
+
+# Worker threads. Set to spare CPU cores (Contabo 6-core box -> 4 leaves room
+# for Nginx + OS). Increase if Martin becomes the bottleneck under load.
+worker_processes: 4
+
+# In-process cache (MB), split internally across tiles/fonts/etc.
+# Bigger = fewer SQLite reads under heavy traffic. 512 MB suits a 12 GB box.
+cache:
+  size_mb: 512
+
+# Don't abort startup if a source is briefly missing (e.g. mid-rebuild); warn
+# instead. Martin watches the directory and picks up the tileset when ready.
+on_invalid: warn
+
+# Prefer Brotli when re-compressing uncompressed tiles (smaller payloads).
+preferred_encoding: brotli
+
+# -----------------------------------------------------------------------------
+# Tile sources: auto-discover every *.mbtiles in /tiles.
+# The source id is the filename stem, e.g. /tiles/basemap.mbtiles -> "basemap".
+# This decouples Martin from the TILESET_ID env var (the style is templated to
+# match), so renaming the tileset needs no change here. Martin live-reloads the
+# catalog when the .mbtiles file appears/changes — no restart needed.
+# -----------------------------------------------------------------------------
+mbtiles:
+  paths:
+    - /tiles
+
+# -----------------------------------------------------------------------------
+# Fonts: Martin generates SDF glyph ranges on-the-fly from these TTFs.
+# Endpoint: /font/{fontstack}/{start}-{end}  (proxied as /font/... by Nginx).
+# Latin (Noto Sans) + Arabic (Noto Sans Arabic) -> bilingual GCC labels.
+# -----------------------------------------------------------------------------
+fonts:
+  paths:
+    - /assets/fonts

@@ -1,0 +1,222 @@
+# =============================================================================
+#  MapLibre Self-Hosted Infrastructure — Docker Compose
+# -----------------------------------------------------------------------------
+#  One command to rule them all:
+#
+#       docker compose up -d
+#
+#  Boot order is enforced with health/completion conditions:
+#
+#     generator (run-once)  ──completes──▶  martin (healthy)  ──▶  nginx
+#                                                                    │
+#                                                       certbot ◀────┘ (TLS)
+#
+#  All persistent state lives in named volumes so the stack is reproducible
+#  and safe to `down`/`up` without data loss.
+# =============================================================================
+
+# ----------------------------------------------------------------------------
+# Reusable logging config (json-file with rotation) applied to every service.
+# ----------------------------------------------------------------------------
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+
+  # ===========================================================================
+  # 1. GENERATOR  (run-once init job)
+  # ---------------------------------------------------------------------------
+  # Downloads OSM extracts, verifies + merges them, runs Planetiler to build
+  # the vector tileset, and prepares fonts/sprites/style. Idempotent: skips any
+  # step whose output already exists (unless FORCE_TILE_REBUILD=true).
+  # Exits 0 on success; Martin waits for that before starting.
+  # ===========================================================================
+  generator:
+    build:
+      context: .
+      dockerfile: docker/generator/Dockerfile
+    image: ${COMPOSE_PROJECT_NAME:-maplibre}/generator:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-maplibre}_generator
+    restart: "no"                       # one-shot job, must not loop
+    environment:
+      OSM_REGIONS: ${OSM_REGIONS:-asia/gcc-states}
+      TILESET_ID: ${TILESET_ID:-basemap}
+      MIN_ZOOM: ${MIN_ZOOM:-0}
+      MAX_ZOOM: ${MAX_ZOOM:-14}
+      FORCE_TILE_REBUILD: ${FORCE_TILE_REBUILD:-false}
+      PLANETILER_XMX: ${PLANETILER_XMX:-6g}
+      PLANETILER_STORAGE: ${PLANETILER_STORAGE:-ram}
+      DOMAIN: ${DOMAIN:-localhost}
+      ENABLE_SSL: ${ENABLE_SSL:-true}
+      TILESET_NAME: ${TILESET_ID:-basemap}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - osm_downloads:/data/downloads      # cached .osm.pbf (resumable)
+      - tiles_data:/data/tiles             # generated .mbtiles
+      - assets_data:/data/assets           # fonts, sprites, rewritten style, web
+      - ./scripts:/opt/scripts:ro          # pipeline scripts (read-only)
+      - ./config/style:/opt/style:ro       # base style template
+      - ./assets/web:/opt/web:ro           # demo viewer source
+    networks:
+      - mapnet
+    deploy:
+      resources:
+        limits:
+          memory: ${GENERATOR_MEM_LIMIT:-8g}
+    logging: *default-logging
+
+  # ===========================================================================
+  # 2. MARTIN  (vector tile + glyph server)
+  # ---------------------------------------------------------------------------
+  # Serves vector tiles from the generated .mbtiles and font glyphs (SDF) from
+  # bundled TTFs. Rust, low memory, built for heavy read traffic. Internal only
+  # — never exposed directly; Nginx is the single public entrypoint.
+  # ===========================================================================
+  martin:
+    build:
+      context: .
+      dockerfile: docker/martin/Dockerfile
+      args:
+        MARTIN_IMAGE: ${MARTIN_IMAGE:-ghcr.io/maplibre/martin:latest}
+    image: ${COMPOSE_PROJECT_NAME:-maplibre}/martin:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-maplibre}_martin
+    restart: unless-stopped
+    depends_on:
+      generator:
+        condition: service_completed_successfully
+    environment:
+      RUST_LOG: ${MARTIN_LOG:-info}
+      TZ: ${TZ:-UTC}
+    command:
+      - --config
+      - /config/martin.yaml
+    volumes:
+      - ./config/martin/martin.yaml:/config/martin.yaml:ro
+      - tiles_data:/tiles:ro
+      - assets_data:/assets:ro
+    networks:
+      - mapnet
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: ${MARTIN_MEM_LIMIT:-2g}
+    logging: *default-logging
+
+  # ===========================================================================
+  # 3. NGINX  (TLS termination, edge cache, reverse proxy, load balancer)
+  # ---------------------------------------------------------------------------
+  # The only publicly exposed service. Terminates TLS, serves static assets
+  # (style.json, sprites, demo viewer), caches tiles/glyphs, rate-limits, adds
+  # security headers, and load-balances across one-or-many Martin instances.
+  # ===========================================================================
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+      args:
+        BUILD_HTTP3: ${ENABLE_HTTP3:-false}
+    image: ${COMPOSE_PROJECT_NAME:-maplibre}/nginx:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-maplibre}_nginx
+    restart: unless-stopped
+    depends_on:
+      martin:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ENABLE_SSL: ${ENABLE_SSL:-true}
+      ENABLE_HTTP3: ${ENABLE_HTTP3:-false}
+      NGINX_TILE_CACHE_MAX: ${NGINX_TILE_CACHE_MAX:-20g}
+      NGINX_TILE_CACHE_TTL: ${NGINX_TILE_CACHE_TTL:-30d}
+      NGINX_RATE_LIMIT: ${NGINX_RATE_LIMIT:-50r/s}
+      NGINX_RATE_BURST: ${NGINX_RATE_BURST:-100}
+      TZ: ${TZ:-UTC}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"                      # HTTP/3 (QUIC); harmless if disabled
+    volumes:
+      - ./config/nginx:/etc/nginx/templates-src:ro  # conf templates
+      - assets_data:/srv/assets:ro                   # style, sprites, web viewer
+      - nginx_cache:/var/cache/nginx                 # proxy cache
+      - letsencrypt:/etc/letsencrypt                 # TLS certificates
+      - certbot_webroot:/var/www/certbot             # ACME http-01 challenge
+      - nginx_logs:/var/log/nginx
+    networks:
+      - mapnet
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: ${NGINX_MEM_LIMIT:-1g}
+    logging: *default-logging
+
+  # ===========================================================================
+  # 4. CERTBOT  (Let's Encrypt issuance + auto-renewal)
+  # ---------------------------------------------------------------------------
+  # Obtains a certificate via the webroot (http-01) challenge once Nginx is up,
+  # then loops forever renewing every 12h. Nginx reloads on its own schedule to
+  # pick up renewed certs. No-op when DOMAIN is empty or ENABLE_SSL=false.
+  # ===========================================================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: ${COMPOSE_PROJECT_NAME:-maplibre}_certbot
+    restart: unless-stopped
+    depends_on:
+      nginx:
+        condition: service_started
+    environment:
+      DOMAIN: ${DOMAIN:-}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
+      LETSENCRYPT_STAGING: ${LETSENCRYPT_STAGING:-0}
+      ENABLE_SSL: ${ENABLE_SSL:-true}
+      TZ: ${TZ:-UTC}
+    entrypoint: ["/bin/sh", "/opt/certbot-entrypoint.sh"]
+    volumes:
+      - ./scripts/certbot-entrypoint.sh:/opt/certbot-entrypoint.sh:ro
+      - letsencrypt:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+      - nginx_logs:/var/log/letsencrypt
+    networks:
+      - mapnet
+    logging: *default-logging
+
+# =============================================================================
+# Networks — single private bridge; nothing but Nginx is published.
+# =============================================================================
+networks:
+  mapnet:
+    driver: bridge
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_net
+
+# =============================================================================
+# Named volumes — all persistent state.
+# =============================================================================
+volumes:
+  osm_downloads:      # cached OSM .pbf downloads (resumable)
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_osm_downloads
+  tiles_data:         # generated vector tileset (.mbtiles)
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_tiles
+  assets_data:        # fonts, sprites, rewritten style, demo viewer
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_assets
+  nginx_cache:        # Nginx edge/proxy cache
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_nginx_cache
+  letsencrypt:        # TLS certificates + ACME account
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_letsencrypt
+  certbot_webroot:    # shared ACME http-01 challenge dir
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_certbot_webroot
+  nginx_logs:         # nginx + certbot logs
+    name: ${COMPOSE_PROJECT_NAME:-maplibre}_logs
