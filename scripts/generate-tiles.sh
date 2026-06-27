@@ -78,16 +78,21 @@ if [[ "${need_build}" == "true" ]]; then
   log_info "running Planetiler (Xmx=${PLANETILER_XMX}, storage=${PLANETILER_STORAGE})"
   # Run from DOWNLOADS so Planetiler's auxiliary source downloads (water
   # polygons, Natural Earth, etc.) and tmp files persist on the cached volume.
+  #
+  # --download is REQUIRED: the OpenMapTiles profile needs ~1GB of extra data
+  # sources (ocean polygons + Natural Earth). With --osm-path also set,
+  # Planetiler keeps our OSM extract and only fetches the *missing* aux sources;
+  # re-runs reuse the cache. Omitting --download was a cause of the exit-1.
   (
     cd "${DOWNLOADS}"
     java -Xmx"${PLANETILER_XMX}" -jar "${PLANETILER_JAR}" \
+      --download \
       --osm-path="${SRC}" \
       --output="${TMP_OUT}" \
       --force \
       --minzoom="${MIN_ZOOM}" \
       --maxzoom="${MAX_ZOOM}" \
-      --storage="${PLANETILER_STORAGE}" \
-      --nodemap-storage="${PLANETILER_STORAGE}"
+      --storage="${PLANETILER_STORAGE}"
   ) || die "Planetiler failed"
 
   [[ -s "${TMP_OUT}" ]] || die "Planetiler produced no output"

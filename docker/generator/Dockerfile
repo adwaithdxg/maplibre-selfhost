@@ -22,29 +22,31 @@ RUN set -eux; \
 # ----- Stage 2: runtime ------------------------------------------------------
 FROM eclipse-temurin:21-jre-jammy AS runtime
 
-# Tools: osmium-tool (merge extracts), jq (rewrite style JSON), curl (download),
-# unzip (sprite archives), tini (clean PID 1 signal handling).
+# Tools:
+#   osmium-tool  - merge multiple OSM extracts
+#   jq           - validate the rendered style JSON
+#   gettext-base - provides `envsubst` (REQUIRED by prepare-assets.sh; its
+#                  absence was a cause of the generator exiting 1)
+#   curl         - downloads, unzip - archives, tini - clean PID 1 signals
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        osmium-tool jq curl ca-certificates unzip tini; \
+        osmium-tool jq gettext-base curl ca-certificates unzip tini; \
     rm -rf /var/lib/apt/lists/*
 
 # Planetiler fat-jar from the fetch stage.
 COPY --from=fetch /planetiler.jar /opt/planetiler/planetiler.jar
 
-# Non-root user. UID/GID 10001 keeps it well clear of host users; volumes are
-# chowned by the entrypoint on first run.
-RUN groupadd -g 10001 maptiler && \
-    useradd  -u 10001 -g 10001 -m -s /usr/sbin/nologin maptiler && \
-    mkdir -p /data/downloads /data/tiles /data/assets && \
-    chown -R maptiler:maptiler /data /opt/planetiler
+# Create the data mountpoints. This is a transient, run-once batch job (it
+# exits before any network-facing service starts), so it runs as root to avoid
+# the named-volume ownership pitfalls entirely — it must be able to write the
+# tiles/assets/downloads volumes regardless of how Docker initialised them.
+# The long-lived, internet-facing services (martin, nginx) remain non-root.
+RUN mkdir -p /data/downloads /data/tiles /data/assets
 
 ENV PLANETILER_JAR=/opt/planetiler/planetiler.jar \
-    JAVA_TOOL_OPTIONS="" \
-    HOME=/home/maptiler
+    JAVA_TOOL_OPTIONS=""
 
-USER maptiler
 WORKDIR /data
 
 # tini -> our idempotent pipeline script. The script is bind-mounted at runtime
