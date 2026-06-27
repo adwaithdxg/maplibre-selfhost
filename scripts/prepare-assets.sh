@@ -26,6 +26,9 @@ WEB_TEMPLATE="${WEB_TEMPLATE:-/opt/web/index.html}"
 TILESET_ID="${TILESET_ID:-basemap}"
 MIN_ZOOM="${MIN_ZOOM:-0}"
 MAX_ZOOM="${MAX_ZOOM:-14}"
+WORLD_MAX_ZOOM="${WORLD_MAX_ZOOM:-6}"
+TILES_DIR="${TILES:-/data/tiles}"
+WORLD_MBTILES="${TILES_DIR}/world.mbtiles"
 DOMAIN="${DOMAIN:-}"
 ENABLE_SSL="${ENABLE_SSL:-true}"
 
@@ -85,9 +88,23 @@ fetch_font "NotoSansArabic-Bold.ttf" \
 # ---- Style ------------------------------------------------------------------
 # Substitute deployment-specific values into the bundled style template.
 if [[ -f "${STYLE_TEMPLATE}" ]]; then
-  export PUBLIC_URL TILESET_ID MIN_ZOOM MAX_ZOOM
-  envsubst '${PUBLIC_URL} ${TILESET_ID} ${MIN_ZOOM} ${MAX_ZOOM}' \
+  export PUBLIC_URL TILESET_ID MIN_ZOOM MAX_ZOOM WORLD_MAX_ZOOM
+  envsubst '${PUBLIC_URL} ${TILESET_ID} ${MIN_ZOOM} ${MAX_ZOOM} ${WORLD_MAX_ZOOM}' \
     < "${STYLE_TEMPLATE}" > "${STYLE_DIR}/style.json"
+
+  # If the global overview tileset is absent (disabled or failed to build),
+  # strip the "world" source and all world-tier layers so the style still loads
+  # cleanly with just the regional tileset — no 404s for /tiles/world.
+  if [[ ! -s "${WORLD_MBTILES}" ]]; then
+    log_warn "world.mbtiles not present -> removing world source/layers from style"
+    tmp="${STYLE_DIR}/.style.tmp.json"
+    jq 'del(.sources.world)
+        | .layers |= map(select((.metadata."mlb:tier" // "") != "world"))' \
+      "${STYLE_DIR}/style.json" > "${tmp}" && mv -f "${tmp}" "${STYLE_DIR}/style.json"
+  else
+    log_info "world overview tileset present -> style uses world + regional sources"
+  fi
+
   # Validate JSON before publishing (fail loud — a broken style is useless).
   jq empty "${STYLE_DIR}/style.json" \
     || die "rendered style.json is not valid JSON"

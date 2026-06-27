@@ -46,6 +46,9 @@ services:
       TILESET_ID: ${TILESET_ID:-basemap}
       MIN_ZOOM: ${MIN_ZOOM:-0}
       MAX_ZOOM: ${MAX_ZOOM:-14}
+      # Global low-zoom overview (whole-world basemap at z0..WORLD_MAX_ZOOM).
+      WORLD_OVERVIEW: ${WORLD_OVERVIEW:-true}
+      WORLD_MAX_ZOOM: ${WORLD_MAX_ZOOM:-6}
       FORCE_TILE_REBUILD: ${FORCE_TILE_REBUILD:-false}
       PLANETILER_XMX: ${PLANETILER_XMX:-6g}
       PLANETILER_STORAGE: ${PLANETILER_STORAGE:-ram}
