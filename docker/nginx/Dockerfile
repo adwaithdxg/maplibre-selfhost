@@ -16,31 +16,57 @@ ARG NGINX_VERSION=1.27.4
 
 # ----- Stage 1: build Brotli dynamic modules ---------------------------------
 FROM nginx:${NGINX_VERSION} AS modules
-ARG NGINX_VERSION
 
-# Toolchain + the headers Nginx was configured with (mirrored via `nginx -V`).
+# Pin ngx_brotli to a known-good commit for fully reproducible builds.
+ARG NGX_BROTLI_COMMIT=a71f9312c2deb28875acc7bacfdd5695a111aa53
+
+# Toolchain. NOTE: `cmake` is required — modern ngx_brotli ships the Brotli
+# library as a submodule that MUST be compiled (with CMake) before `make
+# modules`. Omitting this is what caused the previous "exit code 2" failure.
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        build-essential git ca-certificates wget \
+        build-essential cmake git ca-certificates wget \
         libpcre2-dev zlib1g-dev libssl-dev; \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-# Matching Nginx source (only used to compile compatible dynamic modules).
-RUN set -eux; \
-    wget -q "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"; \
-    tar xzf "nginx-${NGINX_VERSION}.tar.gz"; \
-    git clone --depth 1 --recurse-submodules https://github.com/google/ngx_brotli.git
 
-# --with-compat is REQUIRED so the resulting .so loads into the official binary.
+# Fetch the EXACT nginx source that matches THIS base image (derived from
+# `nginx -v`), so the dynamic module is always ABI-compatible — no version
+# guessing, no "module is not binary compatible" at startup. Then fetch
+# ngx_brotli at the pinned commit with its Brotli submodule.
 RUN set -eux; \
-    cd "nginx-${NGINX_VERSION}"; \
-    ./configure --with-compat --add-dynamic-module=../ngx_brotli; \
+    NGINX_SRC="$(nginx -v 2>&1 | sed -e 's@.*nginx/@@' -e 's@ .*@@')"; \
+    echo "Building Brotli modules for nginx ${NGINX_SRC}"; \
+    wget -q "https://nginx.org/download/nginx-${NGINX_SRC}.tar.gz"; \
+    tar xzf "nginx-${NGINX_SRC}.tar.gz"; \
+    mv "nginx-${NGINX_SRC}" nginx-src; \
+    git clone https://github.com/google/ngx_brotli.git; \
+    cd ngx_brotli; \
+    git checkout "${NGX_BROTLI_COMMIT}"; \
+    git submodule update --init --recursive
+
+# Step 1: build the bundled Brotli static libraries with CMake.
+# (-O2 -fPIC only — no -march=native, so the image stays portable across CPUs.)
+RUN set -eux; \
+    cd /build/ngx_brotli/deps/brotli; \
+    mkdir -p out; cd out; \
+    cmake -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DCMAKE_C_FLAGS="-O2 -fPIC" \
+          -DCMAKE_INSTALL_PREFIX=./installed ..; \
+    cmake --build . --config Release --target brotlienc brotlidec brotlicommon
+
+# Step 2: compile the dynamic modules against the matching nginx source.
+# --with-compat is REQUIRED so the .so loads into the official nginx binary.
+RUN set -eux; \
+    cd /build/nginx-src; \
+    ./configure --with-compat --add-dynamic-module=/build/ngx_brotli; \
     make -j"$(nproc)" modules; \
     mkdir -p /modules; \
-    cp objs/ngx_http_brotli_filter_module.so /modules/; \
-    cp objs/ngx_http_brotli_static_module.so /modules/
+    install -m 0644 objs/ngx_http_brotli_filter_module.so /modules/; \
+    install -m 0644 objs/ngx_http_brotli_static_module.so /modules/
 
 # ----- Stage 2: runtime ------------------------------------------------------
 FROM nginx:${NGINX_VERSION} AS runtime
