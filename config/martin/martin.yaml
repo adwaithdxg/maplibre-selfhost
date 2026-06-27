@@ -28,6 +28,11 @@ on_invalid: warn
 # Prefer Brotli when re-compressing uncompressed tiles (smaller payloads).
 preferred_encoding: brotli
 
+# Disable Martin's own CORS handling — Nginx is the single public edge and owns
+# CORS. If both set Access-Control-Allow-Origin, the response carries it twice
+# ("*, *") and browsers reject it as a CORS error. One owner = exactly one header.
+cors: false
+
 # -----------------------------------------------------------------------------
 # Tile sources: auto-discover every *.mbtiles in /tiles.
 # The source id is the filename stem, e.g. /tiles/basemap.mbtiles -> "basemap".

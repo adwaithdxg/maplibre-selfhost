@@ -39,8 +39,19 @@ location /tiles/ {
     proxy_cache_lock       on;
     proxy_cache_revalidate on;
 
+    # Cheaply answer CORS preflight (not normally sent for simple GET tiles).
+    if ($request_method = OPTIONS) {
+        add_header Access-Control-Allow-Origin  "*" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+        add_header Access-Control-Max-Age       3600 always;
+        add_header Content-Length 0;
+        return 204;
+    }
+
     add_header X-Cache-Status $upstream_cache_status always;
-    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
     add_header Cache-Control "public, max-age=86400" always;
 }
 
@@ -58,8 +69,18 @@ location /font/ {
     proxy_cache_use_stale  error timeout updating;
     proxy_cache_lock       on;
 
+    if ($request_method = OPTIONS) {
+        add_header Access-Control-Allow-Origin  "*" always;
+        add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+        add_header Access-Control-Allow-Headers "*" always;
+        add_header Access-Control-Max-Age       3600 always;
+        add_header Content-Length 0;
+        return 204;
+    }
+
     add_header X-Cache-Status $upstream_cache_status always;
-    add_header Access-Control-Allow-Origin "*" always;
+    add_header Access-Control-Allow-Origin  "*" always;
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
     add_header Cache-Control "public, max-age=604800" always;
 }
 
