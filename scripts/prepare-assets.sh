@@ -34,7 +34,16 @@ mkdir -p "${FONT_DIR}" "${STYLE_DIR}" "${WEB_DIR}"
 # ---- Public base URL --------------------------------------------------------
 # DOMAIN set  -> absolute (works cross-origin, with Nginx CORS headers).
 # DOMAIN unset-> root-relative "" (portable; resolves against the serving host).
-if [[ -n "${DOMAIN}" && "${DOMAIN}" != "localhost" ]]; then
+#
+# IMPORTANT for cross-origin clients (e.g. a separate React app): root-relative
+# URLs ("/tiles/...") only work when the map is viewed on the SAME origin as the
+# server, because MapLibre resolves them against the page's origin. To serve an
+# app hosted elsewhere, set PUBLIC_BASE_URL to this server's absolute base, e.g.
+#   PUBLIC_BASE_URL=http://157.173.108.1   (or https://maps.example.com)
+# and the style + viewer will use absolute URLs (CORS headers are already sent).
+if [[ -n "${PUBLIC_BASE_URL:-}" ]]; then
+  PUBLIC_URL="${PUBLIC_BASE_URL%/}"                 # explicit override wins
+elif [[ -n "${DOMAIN}" && "${DOMAIN}" != "localhost" ]]; then
   if [[ "${ENABLE_SSL}" == "true" ]]; then PUBLIC_URL="https://${DOMAIN}"; else PUBLIC_URL="http://${DOMAIN}"; fi
 else
   PUBLIC_URL=""

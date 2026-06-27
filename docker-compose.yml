@@ -51,6 +51,9 @@ services:
       PLANETILER_STORAGE: ${PLANETILER_STORAGE:-ram}
       DOMAIN: ${DOMAIN:-localhost}
       ENABLE_SSL: ${ENABLE_SSL:-true}
+      # Absolute base URL for tile/glyph/style links in the generated style.json.
+      # Set this to your server IP/domain so external (cross-origin) clients work.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       TILESET_NAME: ${TILESET_ID:-basemap}
       TZ: ${TZ:-UTC}
     volumes:
