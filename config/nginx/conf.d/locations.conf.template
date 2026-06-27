@@ -30,6 +30,13 @@ location /tiles/ {
     proxy_pass http://martin_backend/;
     include    /etc/nginx/snippets/proxy-common.conf;
 
+    # Martin already gzip-compresses tiles (Content-Encoding: gzip). Never let
+    # Nginx re-compress them — a double-encoded body decodes once in the browser
+    # and leaves MapLibre with undecodable bytes (tiles "load" 200 but render
+    # blank). Pass the upstream encoding through untouched.
+    gzip   off;
+    brotli off;
+
     # Edge cache (tiles are immutable per build).
     proxy_cache            tile_cache;
     proxy_cache_valid      200 206 ${NGINX_TILE_CACHE_TTL};
@@ -62,6 +69,10 @@ location /font/ {
 
     proxy_pass http://martin_backend;
     include    /etc/nginx/snippets/proxy-common.conf;
+
+    # Glyphs are also gzip-encoded by Martin; don't re-compress.
+    gzip   off;
+    brotli off;
 
     proxy_cache            tile_cache;
     proxy_cache_valid      200 ${NGINX_TILE_CACHE_TTL};
